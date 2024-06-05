@@ -1,0 +1,184 @@
+---
+title: "Project1"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project 1 : Descriptive analysis of demographic data
+
+```{r}
+library(corrplot)
+library(Hmisc)
+library(dplyr)
+library(ggplot2)
+library(psych)
+library("reshape2")
+census_2001_2021 <- read.csv("census2001_2021.csv", header = TRUE)
+census_2001_2021 <- census_2001_2021[order(census_2001_2021$Life.Expectancy..Both.Sexes),]
+census_2001_2021 <- na.omit(census_2001_2021)   # Omit NA values
+head(census_2001_2021)
+summary(census_2001_2021[5:8])
+```
+
+## 1. Describe the frequency distributions of the variables. Consider also the differences between the sexes.
+
+```{r}
+#Histogram of Infant Mortality rate in 2021
+mortality.rate_2021 <- census_2001_2021$Infant.Mortality.Rate..Both.Sexes[census_2001_2021$Year == 2021]
+hist(mortality.rate_2021, col = 'red', main = "Frequency Distribution of Infant Mortality rate in 2021",
+     freq = TRUE, ylim = c(0,100), xlab = "Mortality Rate" )
+abline(v = mean(mortality.rate_2021), col="green", lwd=2)
+abline(v = median(mortality.rate_2021), col="blue", lwd=2)
+legend("topright", legend=c("Mean", "Median"), col=c("green", "blue"), lty=1:1, cex=1)
+
+```
+```{r}
+#Histogram of life expectancy in 2021
+life.expectancy_2021 <- census_2001_2021$Life.Expectancy..Both.Sexes[census_2001_2021$Year == 2021]
+hist(life.expectancy_2021, col = 'red', main = "Frequency Distribution of Life Expectancy in 2021",
+     freq = TRUE, xlab = "Life Expectancy")
+abline(v = mean(life.expectancy_2021), col="green", lwd=2)
+abline(v = median(life.expectancy_2021), col="blue", lwd=2) 
+legend("topleft", legend=c("Mean", "Median"), col=c("green", "blue"), lty=1:1, cex=1)
+```
+```{r}
+#Histogram of life expectancy of female in 2021
+life.expectancy_female_2021 <- census_2001_2021$Life.Expectancy..Females[census_2001_2021$Year == 2021]
+hist(life.expectancy_female_2021, col = 'red',
+     main = "Frequency Distribution of Female's Life Expectancy in 2021",
+     freq = TRUE, xlab = "Female Life Expectancy")
+abline(v = mean(life.expectancy_female_2021), col="green", lwd=2)
+abline(v = median(life.expectancy_female_2021), col="blue", lwd=2) 
+legend("topleft", legend=c("Mean", "Median"), col=c("green", "blue"), lty=1:1, cex=1)
+```
+
+```{r}
+#Histogram of life expectancy of male in 2021
+life.expectancy_male_2021 <- census_2001_2021$Life.Expectancy..Males[census_2001_2021$Year == 2021]
+hist(life.expectancy_male_2021, col = 'red',
+     main = "Frequency Distribution of Male's Life Expectancy in 2021",
+     freq = TRUE, xlab = "Male Life Expectancy")
+abline(v = mean(life.expectancy_male_2021), col="green", lwd=2)
+abline(v = median(life.expectancy_male_2021), col="blue", lwd=2) 
+legend("topleft", legend=c("Mean", "Median"), col=c("green", "blue"), lty=1:1, cex=1)
+```
+```{r}
+#histogram of difference between male and female life expectancy
+life.expectancy_diff <-  life.expectancy_female_2021 - life.expectancy_male_2021 
+hist(life.expectancy_diff, col = 'red', main = "Male and Female Life Expectancy difference in 2021",
+     freq = TRUE, xlab = "Male & Female Life Expectancy Difference", ylim = c(0,120))
+abline( v = mean(life.expectancy_diff), col = "green", lwd = 2)
+abline( v = median(life.expectancy_diff), col = "blue", lwd = 2)
+legend("topleft", legend=c("Mean", "Median"), col=c("green", "blue"), lty=1:1, cex=1)
+```
+```{r}
+#individual line plots for male and female life expectancy
+plot((life.expectancy_male_2021),type = "o",col = "red", ylab = "Life Expectancy",
+     xlab = "Life Expectancy Male & Female")
+lines((life.expectancy_female_2021), type = "o", col = "blue")
+legend("bottomright", legend=c("Male", "Female"), col=c("red", "blue"), lty=1:1, cex=1)
+```
+
+## 2.Are there bivariate correlations between the variables?
+
+```{r}
+pairs(census_2001_2021[census_2001_2021$Year == 2021, 5:8])
+# #compute correlations for several pairs of variables
+cor(census_2001_2021[ census_2001_2021$Year == 2021, 5:8],method = "pearson")
+cor(census_2001_2021[ census_2001_2021$Year == 2021, 5:8],method = "spearman")
+```
+```{r}
+#correlation matrix presents the correlation coefficients by coloring
+#the coefficients based on their sign
+# show only upper side
+par(mfrow=c(1,1))
+corrplot(cor(census_2001_2021[ census_2001_2021$Year == 2021, 5:8], method = "pearson"),
+         method = "number",type = "upper",title="Pearson coefficients",mar=c(0,0,1,0))
+corrplot(cor(census_2001_2021[ census_2001_2021$Year == 2021, 5:8], method = "spearman"),
+         method = "number",type = "upper",title="Spearman coefficients",mar=c(0,0,1,0))
+
+```
+
+
+## 3. Are the values of the individual variables comparatively homogeneous within the individual subregions and heterogeneous between different subregions? To answer this question, first analyse the variability of the values within the individual subregions and then compare the central values of the individual variables between different subregions.
+
+
+```{r}
+#Boxplot for Infant Mortality rate
+data_mor <- data.frame(region = census_2001_2021[ census_2001_2021$Year == 2021, 'Region'],
+                   subregion = census_2001_2021[ census_2001_2021$Year == 2021, 'Subregion'],
+                     mortality_rate = census_2001_2021[ census_2001_2021$Year == 2021,
+                                                   'Infant.Mortality.Rate..Both.Sexes'])
+data_mor <- data_mor[order(data_mor$region, data_mor$subregion), ]
+data_mor$subregion <- factor(data_mor$subregion, levels = rev(unique(data_mor$subregion)),
+                             ordered = TRUE)
+ggplot(data_mor, aes(subregion, mortality_rate, fill=region)) + geom_boxplot() + coord_flip() 
+```
+```{r}
+#Boxplot for life expectancy of both sexes
+data_exp <- data.frame(region = census_2001_2021[ census_2001_2021$Year == 2021, 'Region'],
+                       subregion = census_2001_2021[ census_2001_2021$Year == 2021, 'Subregion'],
+                       life_expectency = census_2001_2021[ census_2001_2021$Year == 2021,
+                                                           'Life.Expectancy..Both.Sexes'])
+
+data_exp <- data_exp[order(data_exp$region, data_exp$subregion), ]
+data_exp$subregion <- factor(data_exp$subregion, levels = rev(unique(data_exp$subregion)),
+                             ordered = TRUE)
+ggplot(data_exp, aes(subregion, life_expectency, fill=region)) + geom_boxplot() +
+  coord_flip()+ labs(y= "Life Expectancy for Male & Female")
+
+```
+
+```{r}
+#Boxplot for life expectancy of female
+data_female <- data.frame(region = census_2001_2021[ census_2001_2021$Year == 2021, 'Region'],
+                       subregion = census_2001_2021[ census_2001_2021$Year == 2021, 'Subregion'],
+                        life_expectency_female = census_2001_2021[ census_2001_2021$Year == 2021,
+                                                                   'Life.Expectancy..Females'])
+data_female <- data_female[order(data_female$region, data_female$subregion), ]
+data_female$subregion <- factor(data_female$subregion, levels = rev(unique(data_female$subregion)),
+                                ordered = TRUE)
+ggplot(data_female, aes(subregion, life_expectency_female, fill=region)) +
+  geom_boxplot() + coord_flip() + labs(y= "Life Expectancy for Females")
+```
+
+```{r}
+#Boxplot for life expectancy of male
+data_male <- data.frame(region = census_2001_2021[ census_2001_2021$Year == 2021, 'Region'],
+                       subregion = census_2001_2021[ census_2001_2021$Year == 2021, 'Subregion'],
+                       life_expectency_male = census_2001_2021[ census_2001_2021$Year == 2021,
+                                                                'Life.Expectancy..Males'])
+data_male <- data_male[order(data_male$region, data_male$subregion), ]
+data_male$subregion <- factor(data_male$subregion, levels = rev(unique(data_male$subregion)),
+                              ordered = TRUE)
+ggplot(data_male, aes(subregion, life_expectency_male, fill=region)) +
+  geom_boxplot() + coord_flip() + labs(y= "Life Expectancy for Male")
+```
+
+## 4. How have the values of the variables changed over the last 20 years, i.e. comparing 2001 with 2021?
+
+```{r}
+country <- census_2001_2021$Country
+subregion <- census_2001_2021$Subregion
+
+#Infant Mortality rate 2001 vs 2021
+data_mort <- dcast(census_2001_2021, country + subregion ~ factor(Year),
+                   value.var="Infant.Mortality.Rate..Both.Sexes")
+ggplot(data=data_mort, mapping = aes(x=`2001`,y=`2021`)) +
+  geom_point() + facet_wrap(. ~ subregion) +
+  geom_abline() + ggtitle("Infant Mortality rate 2001 vs 2021") 
+```
+
+```{r}
+# Life.expectancy.both.sexes 2001 vs 2021
+data_life_exp <- dcast(census_2001_2021, country + subregion ~ factor(Year),
+                       value.var="Life.Expectancy..Both.Sexes")
+ggplot(data=data_life_exp, mapping = aes(x=`2001`,y=`2021`)) +
+  geom_point() + facet_wrap(. ~ subregion) +
+  geom_abline() + ggtitle("Life expectancy for both sexes  2001 vs 2021") 
+```
+
+## For tasks 1-3, only the year 2021 considered. This project serves to practice the use of explorative and descriptive methods. Therefore, use appropriate statistical measures and graphical methods for the analysis in all parts of the project.
